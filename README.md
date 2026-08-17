@@ -1,102 +1,77 @@
-# Financial Portfolio Dashboard — Frontend
+# Portfolio Dashboard Frontend
 
-Next.js App Router frontend for the completed Spring Boot service in the sibling `../PortfolioAppBE` directory. The application uses the backend’s real REST DTOs, validation errors, Yahoo Finance history, PostgreSQL persistence, and STOMP portfolio stream; there is no mock data layer.
+Next.js App Router frontend for the Spring Boot backend in `../PortfolioAppBE`.
+It includes live holdings, portfolio charts, backend sorting, popular stocks,
+watchlist management, STOMP updates, dark mode, and responsive states.
 
-## Features
+# Sorting and filtering Decision
 
-- Live portfolio summary: total value, daily P&L, daily percentage, allocation, and best/worst performer
-- Persisted holding create, share-quantity update, and delete flows
-- Live quote table with search, gain/loss filtering, and backend-powered price/change/value/volume sorting
-- Top-10 popular-stock strip with live quotes and one-click watchlist actions
-- Aggregated portfolio chart backed by `/api/market-data/{ticker}/history`
-- Persisted watchlist add/remove flows with backend conflict validation
-- STOMP subscription to `/topic/portfolio` with reconnect and stream-error handling
-- Dark/light mode; desktop, tablet, and mobile layouts
-- Skeleton, chart, empty, full-page, mutation, retry, and toast states
-- Strict TypeScript, Zod validation, Vitest, Docker, and CI
+Currently sorting/filtering handling by FE itself except 1 sorting. Ideally backend should handle sorting/filtering in order to prevent blocking FE for too long it can reduce performance. However since data is to small I used both as an example.
 
-## Stack
+## Run locally
 
-- Next.js 16.3 App Router and Route Handlers
-- React 18, TypeScript, and Tailwind CSS
-- `@stomp/stompjs` over native WebSocket
-- Native `fetch`, Zod, Vitest, and Testing Library
-- Yarn 1.22
-
-## Local run
-
-Requirements: Node.js 20.9+, Yarn 1.22, and the backend running on port `8080`.
-
-Start the backend first:
+Requires Node.js 20.9+, Yarn 1.22, and the backend on port `8080`.
 
 ```bash
+# Terminal 1: backend
 cd ../PortfolioAppBE
 docker compose up --build app
-```
 
-Then start this frontend:
-
-```bash
+# Terminal 2: frontend
 cp .env.example .env.local
 yarn install
 yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Backend Swagger is available at [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html).
+## Run only FE with docker
 
-## Run the complete stack with Docker
+docker build \
+  --build-arg NEXT_PUBLIC_WEBSOCKET_URL=ws://localhost:8080/ws \
+  -t portfolio-frontend .
 
-The frontend Compose file builds the sibling backend and starts PostgreSQL, Spring Boot, and Next.js:
+docker run --rm \
+  -p 3000:3000 \
+  -e BACKEND_URL=http://host.docker.internal:8080 \
+  portfolio-frontend
 
-```bash
-docker compose up --build
-```
 
-Use `docker compose down` to stop the stack. Add `-v` only when you intentionally want to delete the PostgreSQL volume and reset seeded holdings.
+Open [http://localhost:3000](http://localhost:3000). Backend Swagger is at
+[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html).
 
 ## Environment
 
 ```dotenv
-# Server-side target used by Next.js Route Handlers
 BACKEND_URL=http://localhost:8080
-
-# Browser-visible native WebSocket handshake URL
 NEXT_PUBLIC_WEBSOCKET_URL=ws://localhost:8080/ws
 ```
 
-`BACKEND_URL` remains server-only. `NEXT_PUBLIC_WEBSOCKET_URL` is embedded during `next build`; pass it as a Docker build argument for non-local deployments.
+Change these values in `.env.local` when the real API or WebSocket address
+changes. `BACKEND_URL` is server-only; `NEXT_PUBLIC_WEBSOCKET_URL` is exposed to
+the browser and embedded during `next build`.
 
 ## Backend integration
 
-The browser’s REST calls live in [src/lib/portfolio-api.ts](src/lib/portfolio-api.ts). Next.js handlers proxy them to `BACKEND_URL`, keeping backend topology server-side:
+REST calls are defined in `src/lib/portfolio-api.ts` and proxied by Next.js to
+`BACKEND_URL`:
 
-| Method | Frontend route | Spring Boot route |
-| --- | --- | --- |
-| GET, POST | `/api/portfolio` | `/api/portfolio` |
-| GET, PUT, DELETE | `/api/portfolio/{ticker}` | `/api/portfolio/{ticker}` |
-| GET | `/api/market-data/{ticker}` | `/api/market-data/{ticker}` |
-| GET | `/api/market-data/{ticker}/history` | `/api/market-data/{ticker}/history` |
-| GET, POST | `/api/watchlist` | `/api/watchlist` |
-| GET, DELETE | `/api/watchlist/{ticker}` | `/api/watchlist/{ticker}` |
+- `/api/portfolio` and `/api/portfolio/{ticker}`
+- `/api/market-data/{ticker}` and `/api/market-data/{ticker}/history`
+- `/api/watchlist` and `/api/watchlist/{ticker}`
 
-The proxy preserves backend status codes and structured error bodies. If Spring Boot cannot be reached, it returns a compatible `503 BACKEND_UNAVAILABLE` response so the existing retry and toast states remain consistent.
+Sorting uses backend query parameters such as
+`/api/portfolio?sortBy=MARKET_VALUE&direction=DESC`. Popular-stock symbols are a
+curated frontend list, while their quotes come from the live market-data API.
 
-Portfolio sorting calls the backend with its native query contract, for example
-`/api/portfolio?sortBy=MARKET_VALUE&direction=DESC`. Popular-stock cards load live
-data through `/api/market-data/{ticker}`; the ten symbols are a curated UI list,
-not an investment recommendation or a separate backend dataset.
+Live portfolio updates connect to `ws://localhost:8080/ws` and subscribe to
+`/topic/portfolio` using STOMP.
 
-### WebSocket
+## Docker
 
-The browser connects directly to the backend using STOMP:
+Run the frontend, backend, and PostgreSQL together:
 
-- Handshake: `ws://localhost:8080/ws`
-- Subscription: `/topic/portfolio`
-- Success event: `PORTFOLIO_UPDATE` with the complete `PortfolioSummaryResponse`
-- Failure event: `PORTFOLIO_UPDATE_ERROR` with `errorCode` and `errorMessage`
-- Reconnect delay: 5 seconds
-
-Contract schemas are centralized in [src/lib/portfolio-schema.ts](src/lib/portfolio-schema.ts) and mirror the Java response records in `../PortfolioAppBE/src/main/java/com/example/portfolioappbe/dto/response`.
+```bash
+docker compose up --build
+```
 
 ## Checks
 
@@ -107,6 +82,7 @@ yarn test
 yarn build
 ```
 
-## AI usage disclosure
+## AI disclosure
 
-OpenAI Codex was used to interpret the case, inspect the backend controllers/DTOs, implement and verify the frontend integration, and run automated checks. The resulting code and contracts remain directly reviewable.
+Agents.md file pointing to backend service from my local. Which AI assist me to connect the API and websockets that I implemented without hardcoded it to the prompt.
+OpenAI Codex was used to help implement and verify this project.
