@@ -86,3 +86,15 @@ yarn build
 
 Agents.md file pointing to backend service from my local. Which AI assist me to connect the API and websockets that I implemented without hardcoded it to the prompt.
 OpenAI Codex was used to help implement and verify this project.
+
+## Screenshots
+
+<img width="800" height="510" alt="Screenshot 2026-08-17 at 23 45 22" src="https://github.com/user-attachments/assets/a78472ad-497d-446b-8fd7-9ef957d86689" />
+<img width="1632" height="462" alt="Screenshot 2026-08-17 at 23 45 10" src="https://github.com/user-attachments/assets/e7e3624b-42d9-4101-b141-f18b8eeff2d7" />
+<img width="1845" height="840" alt="Screenshot 2026-08-17 at 23 44 51" src="https://github.com/user-attachments/assets/8765bd5a-941d-4ed8-a167-1599a79fa676" />
+<img width="1845" height="840" alt="Screenshot 2026-08-17 at 23 45 01" src="https://github.com/user-attachments/assets/7dc0fc3f-b729-4492-bfd0-35ff39f63735" />
+
+
+
+
+
