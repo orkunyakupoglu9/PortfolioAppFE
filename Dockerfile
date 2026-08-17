@@ -7,6 +7,8 @@ RUN yarn install --frozen-lockfile --non-interactive
 FROM node:20-alpine AS builder
 WORKDIR /app
 RUN corepack enable
+ARG NEXT_PUBLIC_WEBSOCKET_URL=ws://localhost:8080/ws
+ENV NEXT_PUBLIC_WEBSOCKET_URL=$NEXT_PUBLIC_WEBSOCKET_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN yarn build

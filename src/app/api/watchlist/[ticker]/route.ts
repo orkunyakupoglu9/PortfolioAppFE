@@ -1,10 +1,17 @@
-import { NextResponse } from "next/server";
-import { removeMockWatchlistItem } from "@/lib/mock-portfolio-store";
+import type { NextRequest } from "next/server";
+import { proxyBackend } from "@/lib/backend-proxy";
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ ticker: string }> }) {
-  const { ticker } = await params;
-  const removed = removeMockWatchlistItem(decodeURIComponent(ticker));
-  return removed
-    ? new NextResponse(null, { status: 204 })
-    : NextResponse.json({ message: "Watchlist item was not found." }, { status: 404 });
+type RouteContext = { params: Promise<{ ticker: string }> };
+
+async function watchlistPath(context: RouteContext): Promise<string> {
+  const { ticker } = await context.params;
+  return `/api/watchlist/${encodeURIComponent(ticker.toUpperCase())}`;
+}
+
+export async function GET(request: NextRequest, context: RouteContext) {
+  return proxyBackend(request, await watchlistPath(context));
+}
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  return proxyBackend(request, await watchlistPath(context));
 }

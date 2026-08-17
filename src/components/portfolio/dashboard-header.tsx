@@ -12,7 +12,6 @@ type DashboardHeaderProps = {
 const statusText: Record<ConnectionState, string> = {
   connecting: "Connecting",
   live: "Live market",
-  simulated: "Demo live",
   offline: "Reconnecting",
 };
 

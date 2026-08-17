@@ -1,50 +1,29 @@
 import { describe, expect, it } from "vitest";
-import {
-  bestPerformer,
-  totalPortfolioValue,
-  totalProfitLoss,
-} from "@/lib/portfolio-metrics";
-import type { PortfolioPosition } from "@/types/portfolio";
+import { bestPerformer, totalDayChange, totalPortfolioValue, worstPerformer } from "@/lib/portfolio-metrics";
+import type { PortfolioHolding } from "@/types/portfolio";
 
-const portfolio: PortfolioPosition[] = [
-  {
-    ticker: "AAPL",
-    companyName: "Apple Inc.",
-    sector: "Technology",
-    shares: 10,
-    currentPrice: 200,
-    previousClose: 196,
-    changePercent: 2,
-    averagePrice: 150,
-    volume: 1_000,
-    sparkline: [190, 200],
-    lastUpdated: "2026-08-17T10:00:00.000Z",
-  },
-  {
-    ticker: "MSFT",
-    companyName: "Microsoft Corp.",
-    sector: "Technology",
-    shares: 5,
-    currentPrice: 400,
-    previousClose: 404,
-    changePercent: -1,
-    averagePrice: 350,
-    volume: 2_000,
-    sparkline: [405, 400],
-    lastUpdated: "2026-08-17T10:00:00.000Z",
-  },
-];
+const holding = (overrides: Partial<PortfolioHolding>): PortfolioHolding => ({
+  id: "00000000-0000-0000-0000-000000000001",
+  ticker: "AAPL",
+  companyName: "Apple Inc.",
+  shares: 10,
+  currency: "USD",
+  currentPrice: 200,
+  previousClose: 196,
+  priceChange: 4,
+  changePercentage: 2,
+  volume: 1_000,
+  marketValue: 2_000,
+  dailyProfitLoss: 40,
+  marketTime: "2026-08-17T10:00:00.000Z",
+  ...overrides,
+});
+
+const portfolio = [holding({}), holding({ id: "00000000-0000-0000-0000-000000000002", ticker: "MSFT", marketValue: 2_100, dailyProfitLoss: -20, changePercentage: -1 })];
 
 describe("portfolio metrics", () => {
-  it("calculates total market value", () => {
-    expect(totalPortfolioValue(portfolio)).toBe(4000);
-  });
-
-  it("calculates total profit and loss", () => {
-    expect(totalProfitLoss(portfolio)).toBe(750);
-  });
-
-  it("finds the best performer", () => {
-    expect(bestPerformer(portfolio)?.ticker).toBe("AAPL");
-  });
+  it("sums backend-calculated market values", () => expect(totalPortfolioValue(portfolio)).toBe(4_100));
+  it("sums backend-calculated daily profit and loss", () => expect(totalDayChange(portfolio)).toBe(20));
+  it("finds the best performer", () => expect(bestPerformer(portfolio)?.ticker).toBe("AAPL"));
+  it("finds the worst performer", () => expect(worstPerformer(portfolio)?.ticker).toBe("MSFT"));
 });
