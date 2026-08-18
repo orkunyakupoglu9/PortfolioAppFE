@@ -33,7 +33,7 @@ yaklaşım da örnek olarak kullanılmıştır.
   yeniden bağlanır, bileşen kaldırıldığında abonelikten çıkar ve temizleme
   sonrasındaki geri çağrıları yok sayar.
 
-## Yerel ortamda çalıştırma
+## Servisleri ayrı ayrı yerel ortamda çalıştırma
 
 Node.js 22, Yarn 1.22 ve `8080` portunda çalışan backend gereklidir.
 
@@ -44,27 +44,33 @@ docker compose up --build app
 
 # Terminal 2: frontend
 cp .env.example .env.local
+nvm use
 yarn install
 yarn dev
+```
+
+## Tüm servisleri tek bir Docker Compose komutuyla çalıştırma
+
+Bu komut frontend, backend, PostgreSQL ve Redis servislerini birlikte başlatır:
+
+```bash
+docker compose up --build
+```
+
+> **Not:** `docker-compose.yml`, backend'i `../PortfolioAppBE` yolundan build
+> ettiği için frontend ve backend repoları aynı ana dizin altında kardeş
+> dizinler olarak bulunmalıdır.
+
+```text
+Projects/
+├── PorfolioAppFE/
+└── PortfolioAppBE/
 ```
 
 Uygulamayı [http://localhost:3000](http://localhost:3000) adresinden
 açabilirsiniz. Backend Swagger arayüzü
 [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
 adresindedir.
-
-## Yalnızca frontend'i Docker ile çalıştırma
-
-```bash
-docker build \
-  --build-arg NEXT_PUBLIC_WEBSOCKET_URL=ws://localhost:8080/ws \
-  -t portfolio-frontend .
-
-docker run --rm \
-  -p 3000:3000 \
-  -e BACKEND_URL=http://host.docker.internal:8080 \
-  portfolio-frontend
-```
 
 ## Ortam değişkenleri
 
@@ -94,14 +100,6 @@ bir listedir; fiyat bilgileri canlı market-data API'sinden alınır.
 
 Canlı portföy güncellemeleri STOMP kullanarak `ws://localhost:8080/ws` adresine
 bağlanır ve `/topic/portfolio` kanalına abone olur.
-
-## Docker
-
-Frontend, backend ve PostgreSQL'i birlikte çalıştırmak için:
-
-```bash
-docker compose up --build
-```
 
 ## Kontroller
 

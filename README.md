@@ -24,7 +24,7 @@ Currently sorting/filtering handling by FE itself except 1 sorting. Ideally back
 - STOMP connections use an 8-second connection timeout, reconnect after 5
   seconds, unsubscribe on unmount, and ignore callbacks after disposal.
 
-## Run locally
+## Run locally with the services started separately
 
 Requires Node.js 22, Yarn 1.22, and the backend on port `8080`.
 
@@ -40,17 +40,23 @@ yarn install
 yarn dev
 ```
 
-## Run only FE with docker
+## Run the complete stack with one Docker Compose command
 
-docker build \
-  --build-arg NEXT_PUBLIC_WEBSOCKET_URL=ws://localhost:8080/ws \
-  -t portfolio-frontend .
+This starts the frontend, backend, PostgreSQL, and Redis together:
 
-docker run --rm \
-  -p 3000:3000 \
-  -e BACKEND_URL=http://host.docker.internal:8080 \
-  portfolio-frontend
+```bash
+docker compose up --build
+```
 
+> **Note:** The frontend and backend repositories must be sibling directories
+> under the same parent directory because `docker-compose.yml` builds the
+> backend from `../PortfolioAppBE`.
+
+```text
+Projects/
+├── PorfolioAppFE/
+└── PortfolioAppBE/
+```
 
 Open [http://localhost:3000](http://localhost:3000). Backend Swagger is at
 [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html).
@@ -82,14 +88,6 @@ curated frontend list, while their quotes come from the live market-data API.
 Live portfolio updates connect to `ws://localhost:8080/ws` and subscribe to
 `/topic/portfolio` using STOMP.
 
-## Docker
-
-Run the frontend, backend, and PostgreSQL together:
-
-```bash
-docker compose up --build
-```
-
 ## Checks
 
 ```bash
@@ -110,4 +108,3 @@ OpenAI Codex was used to help implement and verify this project.
 <img width="1632" height="462" alt="Screenshot 2026-08-17 at 23 45 10" src="https://github.com/user-attachments/assets/e7e3624b-42d9-4101-b141-f18b8eeff2d7" />
 <img width="1845" height="840" alt="Screenshot 2026-08-17 at 23 44 51" src="https://github.com/user-attachments/assets/8765bd5a-941d-4ed8-a167-1599a79fa676" />
 <img width="1845" height="840" alt="Screenshot 2026-08-17 at 23 45 01" src="https://github.com/user-attachments/assets/7dc0fc3f-b729-4492-bfd0-35ff39f63735" />
-
