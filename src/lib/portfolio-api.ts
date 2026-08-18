@@ -17,6 +17,9 @@ import type {
   UpdatePositionRequest,
   WatchlistItem,
 } from "@/types/portfolio";
+import { fetchWithPolicy } from "@/lib/fetch-with-policy";
+
+const BROWSER_TIMEOUT_MS = 12_000;
 
 type PortfolioQuery = {
   search?: string;
@@ -51,6 +54,13 @@ async function expectJson(response: Response): Promise<unknown> {
   return response.json() as Promise<unknown>;
 }
 
+function apiFetch(input: RequestInfo | URL, init: RequestInit = {}) {
+  return fetchWithPolicy(input, init, {
+    timeoutMs: BROWSER_TIMEOUT_MS,
+    maxRetries: 0,
+  });
+}
+
 export async function getPortfolio(
   query: PortfolioQuery = {},
 ): Promise<PortfolioSummary> {
@@ -60,7 +70,7 @@ export async function getPortfolio(
   if (query.direction) search.set("direction", query.direction);
   const queryString = search.toString();
   const payload = await expectJson(
-    await fetch(`/api/portfolio${queryString ? `?${queryString}` : ""}`, {
+    await apiFetch(`/api/portfolio${queryString ? `?${queryString}` : ""}`, {
       cache: "no-store",
     }),
   );
@@ -69,7 +79,7 @@ export async function getPortfolio(
 
 export async function getMarketQuote(ticker: string): Promise<MarketQuote> {
   const payload = await expectJson(
-    await fetch(`/api/market-data/${encodeURIComponent(ticker)}`, {
+    await apiFetch(`/api/market-data/${encodeURIComponent(ticker)}`, {
       cache: "no-store",
     }),
   );
@@ -78,7 +88,7 @@ export async function getMarketQuote(ticker: string): Promise<MarketQuote> {
 
 export async function getHolding(ticker: string): Promise<PortfolioHolding> {
   const payload = await expectJson(
-    await fetch(`/api/portfolio/${encodeURIComponent(ticker)}`, {
+    await apiFetch(`/api/portfolio/${encodeURIComponent(ticker)}`, {
       cache: "no-store",
     }),
   );
@@ -89,7 +99,7 @@ export async function createPosition(
   request: CreatePositionRequest,
 ): Promise<PortfolioHolding> {
   const payload = await expectJson(
-    await fetch("/api/portfolio", {
+    await apiFetch("/api/portfolio", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(request),
@@ -103,7 +113,7 @@ export async function updatePosition(
   request: UpdatePositionRequest,
 ): Promise<PortfolioHolding> {
   const payload = await expectJson(
-    await fetch(`/api/portfolio/${encodeURIComponent(ticker)}`, {
+    await apiFetch(`/api/portfolio/${encodeURIComponent(ticker)}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(request),
@@ -113,7 +123,7 @@ export async function updatePosition(
 }
 
 export async function removePosition(ticker: string): Promise<void> {
-  const response = await fetch(`/api/portfolio/${encodeURIComponent(ticker)}`, {
+  const response = await apiFetch(`/api/portfolio/${encodeURIComponent(ticker)}`, {
     method: "DELETE",
   });
   if (!response.ok) throw new Error(await getErrorMessage(response));
@@ -121,14 +131,14 @@ export async function removePosition(ticker: string): Promise<void> {
 
 export async function getWatchlist(): Promise<WatchlistItem[]> {
   const payload = await expectJson(
-    await fetch("/api/watchlist", { cache: "no-store" }),
+    await apiFetch("/api/watchlist", { cache: "no-store" }),
   );
   return watchlistResponseSchema.parse(payload);
 }
 
 export async function addWatchlistItem(ticker: string): Promise<WatchlistItem> {
   const payload = await expectJson(
-    await fetch("/api/watchlist", {
+    await apiFetch("/api/watchlist", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ticker }),
@@ -138,7 +148,7 @@ export async function addWatchlistItem(ticker: string): Promise<WatchlistItem> {
 }
 
 export async function removeWatchlistItem(ticker: string): Promise<void> {
-  const response = await fetch(`/api/watchlist/${encodeURIComponent(ticker)}`, {
+  const response = await apiFetch(`/api/watchlist/${encodeURIComponent(ticker)}`, {
     method: "DELETE",
   });
   if (!response.ok) throw new Error(await getErrorMessage(response));
@@ -151,7 +161,7 @@ export async function getHistoricalPrices(
 ): Promise<HistoricalPriceResponse> {
   const search = new URLSearchParams({ range, interval });
   const payload = await expectJson(
-    await fetch(
+    await apiFetch(
       `/api/market-data/${encodeURIComponent(ticker)}/history?${search}`,
       { cache: "no-store" },
     ),
