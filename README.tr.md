@@ -35,7 +35,7 @@ yaklaşım da örnek olarak kullanılmıştır.
 
 ## Yerel ortamda çalıştırma
 
-Node.js 20.9+, Yarn 1.22 ve `8080` portunda çalışan backend gereklidir.
+Node.js 22, Yarn 1.22 ve `8080` portunda çalışan backend gereklidir.
 
 ```bash
 # Terminal 1: backend
