@@ -24,7 +24,9 @@ Currently sorting/filtering handling by FE itself except 1 sorting. Ideally back
 - STOMP connections use an 8-second connection timeout, reconnect after 5
   seconds, unsubscribe on unmount, and ignore callbacks after disposal.
 
-## Run locally with the services started separately
+## Run locally with the services started separately 
+
+p.s I needed this for hot reload
 
 Requires Node.js 22, Yarn 1.22, and the backend on port `8080`.
 
