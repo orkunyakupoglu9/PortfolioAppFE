@@ -77,4 +77,4 @@ export type PortfolioSortField =
 export type ApiSortDirection = "ASC" | "DESC";
 export type PerformanceFilter = "all" | "gainers" | "losers";
 export type ConnectionState = "connecting" | "live" | "offline";
-export type ChartPeriod = "1D" | "1W" | "1M" | "1Y";
+export type ChartPeriod = "1D" | "1W" | "1M" | "3M" | "1Y";

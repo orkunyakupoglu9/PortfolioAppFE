@@ -63,6 +63,14 @@ describe("PortfolioChart", () => {
     await waitFor(() =>
       expect(mockedGetHistoricalPrices).toHaveBeenCalledWith("AAPL", "5d", "1h"),
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "3M" }));
+
+    await waitFor(() =>
+      expect(mockedGetHistoricalPrices).toHaveBeenCalledWith("AAPL", "3mo", "1d"),
+    );
+    expect(screen.getAllByText("Aug 17").length).toBeGreaterThan(0);
+    expect(screen.getByText("$3,015")).toBeInTheDocument();
   });
 
   it("shows an error and retries failed history requests", async () => {

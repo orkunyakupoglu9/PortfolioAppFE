@@ -10,18 +10,27 @@ import type {
   PortfolioHolding,
 } from "@/types/portfolio";
 
-const periods: ChartPeriod[] = ["1D", "1W", "1M", "1Y"];
+const periods: ChartPeriod[] = ["1D", "1W", "1M", "3M", "1Y"];
 const periodConfig: Record<ChartPeriod, { range: string; interval: string }> = {
   "1D": { range: "1d", interval: "5m" },
   "1W": { range: "5d", interval: "1h" },
   "1M": { range: "1mo", interval: "1d" },
+  "3M": { range: "3mo", interval: "1d" },
   "1Y": { range: "1y", interval: "1wk" },
 };
+
+type PortfolioHistoryPoint = { timestamp: string; value: number };
+
+const axisCurrencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
 
 function aggregateHistory(
   positions: PortfolioHolding[],
   histories: HistoricalPriceResponse[],
-): number[] {
+): PortfolioHistoryPoint[] {
   const matchedSeries = histories.flatMap((history) => {
     const position = positions.find(
       (holding) => holding.ticker === history.ticker,
@@ -30,15 +39,52 @@ function aggregateHistory(
   });
 
   if (matchedSeries.length === 0) return [];
-  const pointCount = Math.min(
-    ...matchedSeries.map(({ history }) => history.prices.length),
-  );
-  return Array.from({ length: pointCount }, (_, index) =>
-    matchedSeries.reduce((total, { history, position }) => {
-      const prices = history.prices.slice(-pointCount);
-      return total + prices[index].close * position.shares;
-    }, 0),
-  );
+  const priceMaps = matchedSeries.map(({ history, position }) => ({
+    position,
+    prices: new Map(history.prices.map((price) => [price.timestamp, price.close])),
+  }));
+  const sharedTimestamps = [...priceMaps[0].prices.keys()]
+    .filter((timestamp) =>
+      priceMaps.every(({ prices }) => prices.has(timestamp)),
+    )
+    .sort((left, right) => Date.parse(left) - Date.parse(right));
+
+  return sharedTimestamps.map((timestamp) => ({
+    timestamp,
+    value: priceMaps.reduce(
+      (total, { prices, position }) =>
+        total + (prices.get(timestamp) ?? 0) * position.shares,
+      0,
+    ),
+  }));
+}
+
+function formatChartDate(timestamp: string, period: ChartPeriod): string {
+  const date = new Date(timestamp);
+  if (period === "1D") {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "UTC",
+    }).format(date);
+  }
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: period === "1Y" ? undefined : "numeric",
+    year: period === "1Y" ? "2-digit" : undefined,
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function formatTooltipDate(timestamp: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(new Date(timestamp));
 }
 
 export function PortfolioChart({
@@ -51,6 +97,7 @@ export function PortfolioChart({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const holdingsKey = positions
     .map((position) => `${position.ticker}:${position.shares}`)
     .join(",");
@@ -85,10 +132,11 @@ export function PortfolioChart({
     };
   }, [holdingsKey, period, positions, retry]);
 
-  const values = useMemo(
+  const historyPoints = useMemo(
     () => aggregateHistory(positions, histories),
     [histories, positions],
   );
+  const values = historyPoints.map(({ value }) => value);
   const width = 760;
   const height = 220;
   const padding = 10;
@@ -115,6 +163,16 @@ export function PortfolioChart({
   const start = values[0] ?? 0;
   const end = values.at(-1) ?? 0;
   const change = start === 0 ? 0 : ((end - start) / start) * 100;
+  const activePoint =
+    activeIndex === null ? null : historyPoints[activeIndex] ?? null;
+  const dateLabelIndexes =
+    historyPoints.length < 3
+      ? [0, historyPoints.length - 1]
+      : [
+          0,
+          Math.floor((historyPoints.length - 1) / 2),
+          historyPoints.length - 1,
+        ];
 
   function selectPeriod(nextPeriod: ChartPeriod) {
     setIsLoading(true);
@@ -187,67 +245,134 @@ export function PortfolioChart({
         </div>
       ) : values.length > 1 ? (
         <div
-          className="mt-5 overflow-hidden"
+          className="mt-5"
           aria-label={`${period} portfolio line chart`}
           role="img"
         >
-          <svg
-            viewBox={`0 0 ${width} ${height}`}
-            className="h-[220px] w-full"
-            preserveAspectRatio="none"
-          >
-            <defs>
-              <linearGradient id="portfolioArea" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="0"
-                  stopColor="rgb(var(--brand))"
-                  stopOpacity=".25"
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+            <div className="relative min-w-0">
+              <svg
+                viewBox={`0 0 ${width} ${height}`}
+                className="h-[220px] w-full touch-none"
+                preserveAspectRatio="none"
+                onPointerMove={(event) => {
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  const ratio = (event.clientX - bounds.left) / bounds.width;
+                  setActiveIndex(
+                    Math.max(
+                      0,
+                      Math.min(
+                        historyPoints.length - 1,
+                        Math.round(ratio * (historyPoints.length - 1)),
+                      ),
+                    ),
+                  );
+                }}
+                onPointerLeave={() => setActiveIndex(null)}
+              >
+                <defs>
+                  <linearGradient id="portfolioArea" x1="0" y1="0" x2="0" y2="1">
+                    <stop
+                      offset="0"
+                      stopColor="rgb(var(--brand))"
+                      stopOpacity=".25"
+                    />
+                    <stop
+                      offset="1"
+                      stopColor="rgb(var(--brand))"
+                      stopOpacity="0"
+                    />
+                  </linearGradient>
+                </defs>
+                {[0, 0.25, 0.5, 0.75, 1].map((fraction) => (
+                  <line
+                    key={fraction}
+                    x1="0"
+                    x2={width}
+                    y1={height * fraction}
+                    y2={height * fraction}
+                    stroke="rgb(var(--line))"
+                    strokeWidth="1"
+                    strokeDasharray="4 5"
+                  />
+                ))}
+                <path d={areaPath} fill="url(#portfolioArea)" />
+                <path
+                  d={path}
+                  fill="none"
+                  stroke="rgb(var(--brand))"
+                  strokeWidth="3"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
-                <stop
-                  offset="1"
-                  stopColor="rgb(var(--brand))"
-                  stopOpacity="0"
-                />
-              </linearGradient>
-            </defs>
-            {[0.25, 0.5, 0.75].map((fraction) => (
-              <line
-                key={fraction}
-                x1="0"
-                x2={width}
-                y1={height * fraction}
-                y2={height * fraction}
-                stroke="rgb(var(--line))"
-                strokeWidth="1"
-                strokeDasharray="4 5"
-              />
-            ))}
-            <path d={areaPath} fill="url(#portfolioArea)" />
-            <path
-              d={path}
-              fill="none"
-              stroke="rgb(var(--brand))"
-              strokeWidth="3"
-              vectorEffect="non-scaling-stroke"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {points.length ? (
-              <circle
-                cx={points.at(-1)?.x}
-                cy={points.at(-1)?.y}
-                r="5"
-                fill="rgb(var(--panel))"
-                stroke="rgb(var(--brand))"
-                strokeWidth="3"
-                vectorEffect="non-scaling-stroke"
-              />
-            ) : null}
-          </svg>
-          <div className="mt-1 flex justify-between text-[10px] font-medium text-subtle">
-            <span>Start</span>
-            <span>Mid-period</span>
-            <span>Latest close</span>
+                {activeIndex !== null && points[activeIndex] ? (
+                  <>
+                    <line
+                      x1={points[activeIndex].x}
+                      x2={points[activeIndex].x}
+                      y1="0"
+                      y2={height}
+                      stroke="rgb(var(--subtle))"
+                      strokeWidth="1"
+                      strokeDasharray="3 4"
+                    />
+                    <circle
+                      cx={points[activeIndex].x}
+                      cy={points[activeIndex].y}
+                      r="5"
+                      fill="rgb(var(--panel))"
+                      stroke="rgb(var(--brand))"
+                      strokeWidth="3"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </>
+                ) : (
+                  <circle
+                    cx={points.at(-1)?.x}
+                    cy={points.at(-1)?.y}
+                    r="5"
+                    fill="rgb(var(--panel))"
+                    stroke="rgb(var(--brand))"
+                    strokeWidth="3"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                )}
+              </svg>
+              {activePoint && activeIndex !== null ? (
+                <div
+                  className="pointer-events-none absolute top-2 z-10 rounded-lg border border-line bg-panel/95 px-3 py-2 text-xs shadow-panel backdrop-blur"
+                  style={{
+                    left: `${(activeIndex / (historyPoints.length - 1)) * 100}%`,
+                    transform:
+                      activeIndex > historyPoints.length / 2
+                        ? "translateX(-100%)"
+                        : "translateX(0)",
+                  }}
+                >
+                  <div className="font-semibold text-ink">
+                    {currencyFormatter.format(activePoint.value)}
+                  </div>
+                  <div className="mt-0.5 whitespace-nowrap text-[10px] text-subtle">
+                    {formatTooltipDate(activePoint.timestamp)} UTC
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div className="flex h-[220px] flex-col justify-between text-right text-[10px] font-medium tabular-nums text-subtle">
+              {[0, 0.25, 0.5, 0.75, 1].map((fraction) => (
+                <span key={fraction}>
+                  {axisCurrencyFormatter.format(max - range * fraction)}
+                </span>
+              ))}
+            </div>
+            <div className="flex justify-between text-[10px] font-medium text-subtle">
+              {dateLabelIndexes.map((index, labelIndex) => (
+                <span key={labelIndex}>
+                  {formatChartDate(historyPoints[index].timestamp, period)}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       ) : (
