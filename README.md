@@ -35,6 +35,7 @@ docker compose up --build app
 
 # Terminal 2: frontend
 cp .env.example .env.local
+nvm use
 yarn install
 yarn dev
 ```
