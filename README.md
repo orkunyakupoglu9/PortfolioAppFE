@@ -1,5 +1,7 @@
 # Portfolio Dashboard Frontend
 
+[English](README.md) | [Türkçe](README.tr.md)
+
 Next.js App Router frontend for the Spring Boot backend in `../PortfolioAppBE`.
 It includes live holdings, portfolio charts, backend sorting, popular stocks,
 watchlist management, STOMP updates, dark mode, and responsive states.
@@ -107,6 +109,5 @@ OpenAI Codex was used to help implement and verify this project.
 <img width="1632" height="462" alt="Screenshot 2026-08-17 at 23 45 10" src="https://github.com/user-attachments/assets/e7e3624b-42d9-4101-b141-f18b8eeff2d7" />
 <img width="1845" height="840" alt="Screenshot 2026-08-17 at 23 44 51" src="https://github.com/user-attachments/assets/8765bd5a-941d-4ed8-a167-1599a79fa676" />
 <img width="1845" height="840" alt="Screenshot 2026-08-17 at 23 45 01" src="https://github.com/user-attachments/assets/7dc0fc3f-b729-4492-bfd0-35ff39f63735" />
-
 
 
